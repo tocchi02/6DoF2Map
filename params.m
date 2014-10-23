@@ -45,9 +45,10 @@ acc_scale = 2048;
 gyro_x_mean = 32755; gyro_y_mean = 32783; gyro_z_mean = 32769;
 gyro_scale = 16.4;
 % ----
-% プロット、GPSアウトプットのON/OFF　ON:1,OFF:0
+% プロット、GPS、中間データ アウトプットのON/OFF　ON:1,OFF:0
 SHOW_PLOT = 1;
 OUTPUT_GPS = 1;
 output_GPS_filename = 'CanSatsample';
+OUTPUT_DATA = 1;
 % =======設定項目は以上、以下定数======
 % earth_rate = [0 0 7.2921151467e-5];
