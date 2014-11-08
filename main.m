@@ -102,15 +102,15 @@ end
 
 % ////////////
 if OUTPUT_DATA
-	dlmwrite("output/accelalation_G.csv", [time, acc_x, acc_y, acc_z]);
-	dlmwrite("output/gyro.csv", [time, gyro_x, gyro_y, gyro_z]);
-	dlmwrite("output/quat_delta.csv", [time, quat_delta]);
-	dlmwrite("output/quaternion.csv", [time, quat_body2launch]);
-	dlmwrite("output/euler.csv", [time, euler_deg]);
-	dlmwrite("output/velocity_launch.csv", [time, vel_launch]);
-	dlmwrite("output/position_launch.csv", [time, pos_launch]);
-	dlmwrite("output/position_ECEF.csv", [time, pos_ECEF]);
-	dlmwrite("output/position_blh.csv", [time, pos_blh]);
+	dlmwrite('output/accelalation_G.csv', [time, acc_x, acc_y, acc_z]);
+	dlmwrite('output/gyro.csv', [time, gyro_x, gyro_y, gyro_z]);
+	dlmwrite('output/quat_delta.csv', [time, quat_delta]);
+	dlmwrite('output/quaternion.csv', [time, quat_body2launch]);
+	dlmwrite('output/euler.csv', [time, euler_deg]);
+	dlmwrite('output/velocity_launch.csv', [time, vel_launch]);
+	dlmwrite('output/position_launch.csv', [time, pos_launch]);
+	dlmwrite('output/position_ECEF.csv', [time, pos_ECEF]);
+	dlmwrite('output/position_blh.csv', [time, pos_blh]);
 end
 
 % ////////////
