@@ -1,119 +1,128 @@
-% 加速度ジャイロの6軸の慣性計測の値から座標変換を用いて、姿勢、速度、位置を求める
-% ストラップダウン式の慣性計測ユニット（IMU)の値は機体座標系での計測値なので
-% 慣性座標系での値に変換する。
-% また、便利のために緯度経度高度に変換し、Google Earthで表示できるようにする。
-% - - - -
-% 使用する座標系
-% 機体座標系(Body Frame)：機体に固定された座標系。機体ノーズ方向をx軸としている
-% 射点座標系（UEN):射点中心の地表に平行な座標系。X-Y-ZをUp-East-Northに合わせている。
-% 地球中心地球固定座標系(ECEF)：地球中心を原点にx軸を緯度経度0度、ｚ軸を自転軸に定めた運動座標系
-% 地球中心慣性座標（ECI)：地球中心の慣性座標ｚ軸は自転軸。
-% 測地座標系(BLH)：緯度、経度、楕円体高度の座標系。直交座標系ではない。WGS-84準拠
-% - - - -
-% この計算の注意点
-% 射点座標系は本来地球の自転や公転など運動座標系であり、
-% コリオリ力や遠心力などのみかけの力が働くがここでは、座標系は動かないｔ慣性座標系として考えている。
-% したがって誤差が生じる。
-% - - - -
-% 読み込むファイルの形式
-% <time,><acc>,<acc>,<acc>,<gyro>,<gyro>,<gyro><CR><LF>
-% - - - -
-% 2013年9月30日　稲川貴大
-% 2014年7月5日　稲川貴大　大きく変更
-clear all; close all;
+function ret = main(paramfile_wo_m)
+	% 加速度ジャイロの6軸の慣性計測の値から座標変換を用いて、姿勢、速度、位置を求める
+	% ストラップダウン式の慣性計測ユニット（IMU)の値は機体座標系での計測値なので
+	% 慣性座標系での値に変換する。
+	% また、便利のために緯度経度高度に変換し、Google Earthで表示できるようにする。
+	% - - - -
+	% 使用する座標系
+	% 機体座標系(Body Frame)：機体に固定された座標系。機体ノーズ方向をx軸としている
+	% 射点座標系（UEN):射点中心の地表に平行な座標系。X-Y-ZをUp-East-Northに合わせている。
+	% 地球中心地球固定座標系(ECEF)：地球中心を原点にx軸を緯度経度0度、ｚ軸を自転軸に定めた運動座標系
+	% 地球中心慣性座標（ECI)：地球中心の慣性座標ｚ軸は自転軸。
+	% 測地座標系(BLH)：緯度、経度、楕円体高度の座標系。直交座標系ではない。WGS-84準拠
+	% - - - -
+	% この計算の注意点
+	% 射点座標系は本来地球の自転や公転など運動座標系であり、
+	% コリオリ力や遠心力などのみかけの力が働くがここでは、座標系は動かないｔ慣性座標系として考えている。
+	% したがって誤差が生じる。
+	% - - - -
+	% 読み込むファイルの形式
+	% <time,><acc>,<acc>,<acc>,<gyro>,<gyro>,<gyro><CR><LF>
+	% - - - -
+	% 2013年9月30日　稲川貴大
+	% 2014年7月5日　稲川貴大　大きく変更
+%	clear all; close all;
 
-addpath ./coordinate
-params
+	addpath ./coordinate
+	source(strcat(paramfile_wo_m,".m"))
 
-% ファイルから加速度による移動量とジャイロによる回転角を読み込む。
-csv = csvread(csvfile);
-csv_length = length(csv);
+	% ファイルから加速度による移動量とジャイロによる回転角を読み込む。
+	csv = csvread(csvfile);
+	csv_length = length(csv);
 
-% ECEF座標系においけるログ開始時の位置[m]
-[xr,yr,zr] = blh2ecef(blh_init(1),blh_init(2),blh_init(3));
-% 初期方位角と仰角とロール角をクォータニオン表示
-quat_elevation = rot2quat(elevation_deg_init - 90, [0 0 1]);
-quat_azimth  = rot2quat(azimth_deg_init - 90, [1 0 0]);
+	printf("csv_length = %d\n", csv_length);
+
+	% ECEF座標系においけるログ開始時の位置[m]
+	[xr,yr,zr] = blh2ecef(blh_init(1),blh_init(2),blh_init(3));
+	% 初期方位角と仰角とロール角をクォータニオン表示
+	quat_elevation = rot2quat(elevation_deg_init - 90, [0 0 1]);
+	quat_azimth  = rot2quat(azimth_deg_init - 90, [1 0 0]);
 quat_roll = rot2quat(roll_deg_init, [1 0 0]);
-quat_body2launch = quat_product(quat_elevation, quat_azimth);
-quat_body2launch = quat_product(quat_body2launch, quat_roll);
-% 射点座標系での速度、位置、クォータニオン、方向余弦行列(DCM)の初期化
-vel_launch_prev = [0 0 0];
-pos_launch_prev = pos_init;
-quat_prev = quat_body2launch';	%クォータニオンの初期化
-% dcm_prev = zeros(3);
+	quat_body2launch = quat_product(quat_elevation, quat_azimth);
+	quat_body2launch = quat_product(quat_body2launch, quat_roll);
+	% 射点座標系での速度、位置、クォータニオン、方向余弦行列(DCM)の初期化
+	vel_launch_prev = [0 0 0];
+	pos_launch_prev = pos_init;
+	quat_prev = quat_body2launch';	%クォータニオンの初期化
+	% dcm_prev = zeros(3);
 
-% メインループ
-line = 2;
-% acc_x,gyro_xはノーズ方向（ロール変化させる方向）
-% acc_y,gyro_yはピッチ変化させる方向
-% acc_z,gyro_zはヨー変化させる方向
-% 平均とスケールファクターを考慮し、[g][deg/s]に変換
-time = csv(:,time_line);
-acc_x = (csv(:,acc_roll_line) - acc_x_mean) ./ acc_scale;
-acc_y = (csv(:,acc_pitch_line) - acc_y_mean) ./ acc_scale;
-acc_z = (csv(:,acc_yaw_line) - acc_z_mean) ./ acc_scale;
-gyro_x = (csv(:,gyro_roll_line) - gyro_x_mean) ./ gyro_scale;
-gyro_y = (csv(:,gyro_pitch_line)- gyro_y_mean) ./ gyro_scale;
-gyro_z = (csv(:,gyro_yaw_line) - gyro_z_mean) ./ gyro_scale;
-% 配列の初期化
-quat_delta = zeros(csv_length,4);
-quat_body2launch = zeros(csv_length,4);
-euler_rad = zeros(csv_length,3);
-euler_deg = zeros(csv_length,3);
-vel_launch = zeros(csv_length,3);
-pos_launch = zeros(csv_length,3);
-pos_ECEF = zeros(csv_length,3);
-pos_blh = zeros(csv_length,3);
-pos_blh(1,:) = blh_init;	% 緯度経度高度の初期化
+	% メインループ
+	line = 2;
+	% acc_x,gyro_xはノーズ方向（ロール変化させる方向）
+	% acc_y,gyro_yはピッチ変化させる方向
+	% acc_z,gyro_zはヨー変化させる方向
+	% 平均とスケールファクターを考慮し、[g][deg/s]に変換
+	time = csv(:,time_line);
+	acc_x = (csv(:,acc_roll_line) - acc_x_mean) ./ acc_scale;
+	acc_y = (csv(:,acc_pitch_line) - acc_y_mean) ./ acc_scale;
+	acc_z = (csv(:,acc_yaw_line) - acc_z_mean) ./ acc_scale;
+	gyro_x = (csv(:,gyro_roll_line) - gyro_x_mean) ./ gyro_scale;
+	gyro_y = (csv(:,gyro_pitch_line)- gyro_y_mean) ./ gyro_scale;
+	gyro_z = (csv(:,gyro_yaw_line) - gyro_z_mean) ./ gyro_scale;
+	% 配列の初期化
+	quat_delta = zeros(csv_length,4);
+	quat_body2launch = zeros(csv_length,4);
+	euler_rad = zeros(csv_length,3);
+	euler_deg = zeros(csv_length,3);
+	vel_launch = zeros(csv_length,3);
+	pos_launch = zeros(csv_length,3);
+	pos_ECEF = zeros(csv_length,3);
+	pos_blh = zeros(csv_length,3);
+	pos_blh(1,:) = blh_init;	% 緯度経度高度の初期化
 
-for i =  2:csv_length
-	acc = [acc_x(i), acc_y(i), acc_z(i)] .* 9.8;
-	gyro_deg = [gyro_x(i), gyro_y(i), gyro_z(i)];
-	gyro = deg2rad(gyro_deg);
-	if i == 1
-		dt = time(i);
-	else
-		dt = time(i) - time(i-1);
+	for i =  2:csv_length
+		acc = [acc_x(i), acc_y(i), acc_z(i)] .* 9.8;
+		gyro_deg = [gyro_x(i), gyro_y(i), gyro_z(i)];
+		gyro = deg2rad(gyro_deg);
+		if i == 1
+			dt = time(i);
+		else
+			dt = time(i) - time(i-1);
+		end
+		quat_delta(i,:) = quat_diff(quat_prev, gyro, dt);
+		quat_body2launch(i,:) = quat_prev + quat_delta(i,:);
+		quat_body2launch(i,:) = quat_normalize(quat_body2launch(i,:));
+		dcm_body2launch= quat2dcm(quat_body2launch(i,:));
+		euler(i,:) = quat2euler(quat_body2launch(i,:));
+		euler_deg(i,:) = rad2deg(euler(i,:));
+		[vel_launch(i,:),pos_launch(i,:)] = position_eq(vel_launch_prev, pos_launch_prev, dt, acc, dcm_body2launch);
+		[pos_ECEF(i,1),pos_ECEF(i,2),pos_ECEF(i,3)] = launch2ecef(pos_launch(i,1),pos_launch(i,2),pos_launch(i,3),xr,yr,zr);
+		[pos_blh(i,1),pos_blh(i,2),pos_blh(i,3)] = ecef2blh(pos_ECEF(i,1),pos_ECEF(i,2),pos_ECEF(i,3));
+
+		quat_prev = quat_body2launch(i,:);
+		vel_launch_prev = vel_launch(i,:);
+		pos_launch_prev = pos_launch(i,:);
 	end
-	quat_delta(i,:) = quat_diff(quat_prev, gyro, dt);
-	quat_body2launch(i,:) = quat_prev + quat_delta(i,:);
-	quat_body2launch(i,:) = quat_normalize(quat_body2launch(i,:));
-	dcm_body2launch= quat2dcm(quat_body2launch(i,:));
-	euler(i,:) = quat2euler(quat_body2launch(i,:));
-	euler_deg(i,:) = rad2deg(euler(i,:));
-	[vel_launch(i,:),pos_launch(i,:)] = position_eq(vel_launch_prev, pos_launch_prev, dt, acc, dcm_body2launch);
-	[pos_ECEF(i,1),pos_ECEF(i,2),pos_ECEF(i,3)] = launch2ecef(pos_launch(i,1),pos_launch(i,2),pos_launch(i,3),xr,yr,zr);
-	[pos_blh(i,1),pos_blh(i,2),pos_blh(i,3)] = ecef2blh(pos_ECEF(i,1),pos_ECEF(i,2),pos_ECEF(i,3));
 
-	quat_prev = quat_body2launch(i,:);
-	vel_launch_prev = vel_launch(i,:);
-	pos_launch_prev = pos_launch(i,:);
-end
+	% /////
+		% ６DOFのセンサデータからGPSデータ（NMEA GPGGA）のデータ列に変換し、outputディレクトリにstr.nmeaで保存
+	% /////
+	if OUTPUT_GPS || OUTPUT_DATA
+		output_base = strcat('output_',paramfile_wo_m, '/');
+		mkdir(output_base);
+	end
 
-% /////
-	% ６DOFのセンサデータからGPSデータ（NMEA GPGGA）のデータ列に変換し、outputディレクトリにstr.nmeaで保存
-% /////
-if OUTPUT_GPS
-	% str = 'sample';
-	disp('Making NMEA file...')
-	blh2GPSdata(output_GPS_filename,time,pos_blh,time_ref, day_ref);
-end
+	if OUTPUT_GPS
+		output_GPS_filename = strcat(output_base, 'GPS.nmea');
+		disp('Making NMEA file...')
+		blh2GPSdata(output_GPS_filename,time,pos_blh,time_ref, day_ref);
+	end
 
-% ////////////
-if OUTPUT_DATA
-	dlmwrite('output/accelalation_G.csv', [time, acc_x, acc_y, acc_z]);
-	dlmwrite('output/gyro.csv', [time, gyro_x, gyro_y, gyro_z]);
-	dlmwrite('output/quat_delta.csv', [time, quat_delta]);
-	dlmwrite('output/quaternion.csv', [time, quat_body2launch]);
-	dlmwrite('output/euler.csv', [time, euler_deg]);
-	dlmwrite('output/velocity_launch.csv', [time, vel_launch]);
-	dlmwrite('output/position_launch.csv', [time, pos_launch]);
-	dlmwrite('output/position_ECEF.csv', [time, pos_ECEF]);
-	dlmwrite('output/position_blh.csv', [time, pos_blh]);
-end
+	% ////////////
+	if OUTPUT_DATA
+		dlmwrite(strcat(output_base, 'accelalation_G.csv'),  [time, acc_x, acc_y, acc_z]);
+		dlmwrite(strcat(output_base, 'gyro.csv'),            [time, gyro_x, gyro_y, gyro_z]);
+		dlmwrite(strcat(output_base, 'quat_delta.csv'),      [time, quat_delta]);
+		dlmwrite(strcat(output_base, 'quaternion.csv'),      [time, quat_body2launch]);
+		dlmwrite(strcat(output_base, 'euler.csv'),           [time, euler_deg]);
+		dlmwrite(strcat(output_base, 'velocity_launch.csv'), [time, vel_launch]);
+		dlmwrite(strcat(output_base, 'position_launch.csv'), [time, pos_launch]);
+		dlmwrite(strcat(output_base, 'position_ECEF.csv'),   [time, pos_ECEF]);
+		dlmwrite(strcat(output_base, 'position_blh.csv'),    [time, pos_blh]);
+	end
 
-% ////////////
-if SHOW_PLOT
-    figureplot
-end
+	% ////////////
+	if SHOW_PLOT
+	    figureplot
+	end
+endfunction

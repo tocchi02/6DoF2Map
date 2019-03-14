@@ -1,4 +1,4 @@
-function [] = blh2GPSdata(filename,time,blh,time_ref,day_ref)
+function [] = blh2GPSdata(fileaddress,time,blh,time_ref,day_ref)
 	% 緯度経度高度の情報から擬似的なGPSデータ（$GPGGA)を作る。
 	% Google Earthに読み込ませるためにわざわざ作る。
 	% filename:ファイル名
@@ -6,7 +6,6 @@ function [] = blh2GPSdata(filename,time,blh,time_ref,day_ref)
 	% blh[:,3]:緯度経度高度[緯度、経度、高度][deg deg m]
 	% time_ref:JST time[HHMMSS.SS] ex.123456.78
 	% day_ref:UTC year,month,day[1x3][year, month, day] ex.[2013, 10,1]
-	fileaddress = strcat('output/',filename,'.nmea');
 	[fid, msg] = fopen(fileaddress, 'w');
 	len = length(blh(:,1));
 
